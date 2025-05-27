@@ -1,384 +1,445 @@
-# Modélisation UML - Système de Gestion des Absences ISM
+## 5. Diagramme d'Activités - Processus Global de Gestion des Absences
+
+```mermaid
+flowchart TD
+    Start([Début de séance]) --> Fork1{" "}
+    
+    Fork1 --> VLogin[Vigile se connecte]
+    Fork1 --> EArrive[Étudiants arrivent]
+    
+    VLogin --> VAccess[Vigile accède à la séance]
+    VAccess --> Fork1End{" "}
+    EArrive --> Fork1End
+    
+    Fork1End --> StartPointing[Vigile commence le pointage]
+    
+    StartPointing --> CheckMore{Étudiants à pointer?}
+    
+    CheckMore -->|Oui| MethodChoice{Méthode de pointage?}
+    CheckMore -->|Non| EndPointing[Fin du pointage]
+    
+    MethodChoice -->|QR Code| ScanQR[Scanner QR Code]
+    MethodChoice -->|Matricule| EnterMat[Saisir matricule]
+    
+    ScanQR --> VerifyStudent[Vérifier identité étudiant]
+    EnterMat --> VerifyStudent
+    
+    VerifyStudent --> CalcTime[Calculer heure d'arrivée]
+    
+    CalcTime --> CheckTime{Heure ≤ Début + 15min?}
+    
+    CheckTime -->|Oui| MarkPresent[Marquer PRESENT]
+    CheckTime -->|Non| MarkLate[Marquer RETARD]
+    
+    MarkPresent --> SavePresence[Enregistrer présence]
+    MarkLate --> SavePresence
+    
+    SavePresence --> CheckMore
+    
+    EndPointing --> Fork2{" "}
+    
+    Fork2 --> GenAbsent[Génération liste absents]
+    Fork2 --> UpdateStats[Mise à jour statistiques]
+    
+    GenAbsent --> NotifyAbsent[Notification aux absents]
+    UpdateStats --> Fork2End{" "}
+    NotifyAbsent --> Fork2End
+    
+    Fork2End --> StudentProcess[Processus Étudiant]
+    
+    subgraph Processus Étudiant
+        StudentProcess --> ConsultAbs[Étudiant consulte absences]
+        ConsultAbs --> HasJustify{Absence à justifier?}
+        
+        HasJustify -->|Non| EndProcess
+        HasJustify -->|Oui| FillJustif[Remplir justification]
+        
+        FillJustif --> UploadDoc[Télécharger document]
+        UploadDoc --> SubmitJustif[Soumettre justification]
+        
+        subgraph Processus Admin# Modélisation UML - Système de Gestion des Absences ISM
 
 ## 1. Diagramme de Cas d'Utilisation (Use Case)
 
 ```mermaid
-@startuml
-!define RECTANGLE class
-
-skinparam actor {
-    BackgroundColor<< Vigile >> LightBlue
-    BackgroundColor<< Etudiant >> LightGreen
-    BackgroundColor<< Admin >> LightCoral
-}
-
-actor "Vigile" as vigile << Vigile >>
-actor "Étudiant" as etudiant << Etudiant >>
-actor "Administrateur" as admin << Admin >>
-
-rectangle "Système de Gestion des Absences ISM" {
-    ' Cas d'utilisation communs
-    usecase "Se connecter" as UC_Login
+graph TB
+    subgraph "Acteurs"
+        Vigile[fa:fa-user-shield Vigile]
+        Etudiant[fa:fa-graduation-cap Étudiant]
+        Admin[fa:fa-user-cog Administrateur]
+    end
     
-    ' Cas d'utilisation Vigile
-    usecase "Scanner QR Code étudiant" as UC_ScanQR
-    usecase "Saisir matricule étudiant" as UC_SaisirMatricule
-    usecase "Pointer un étudiant" as UC_Pointer
-    usecase "Consulter présences du jour" as UC_ConsulterPresencesJour
+    subgraph "Système de Gestion des Absences ISM"
+        %% Cas d'utilisation communs
+        Login[Se connecter]
+        
+        %% Cas d'utilisation Vigile
+        ScanQR[Scanner QR Code étudiant]
+        SaisirMat[Saisir matricule étudiant]
+        Pointer[Pointer un étudiant]
+        ConsulterPresJour[Consulter présences du jour]
+        
+        %% Cas d'utilisation Étudiant
+        ConsulterAbs[Consulter ses absences]
+        ConsulterRet[Consulter ses retards]
+        Justifier[Justifier absence/retard]
+        ConsulterEDT[Consulter emploi du temps]
+        TelechargerJust[Télécharger justificatif]
+        
+        %% Cas d'utilisation Administrateur
+        ConsulterToutesAbs[Consulter toutes absences]
+        ConsulterTousRet[Consulter tous retards]
+        ValiderJust[Valider justification]
+        RejeterJust[Rejeter justification]
+        GererInsc[Gérer inscriptions]
+        GererClasses[Gérer classes]
+        GererEns[Gérer enseignants]
+        GererCours[Gérer cours]
+        GererSeances[Gérer séances]
+        GererPlanning[Gérer planning global]
+        GenererRapports[Générer rapports]
+    end
     
-    ' Cas d'utilisation Étudiant
-    usecase "Consulter ses absences" as UC_ConsulterAbsences
-    usecase "Consulter ses retards" as UC_ConsulterRetards
-    usecase "Justifier absence/retard" as UC_Justifier
-    usecase "Consulter emploi du temps" as UC_ConsulterEDT
-    usecase "Télécharger justificatif" as UC_TelechargerJustif
+    %% Relations Vigile
+    Vigile --> Login
+    Vigile --> ScanQR
+    Vigile --> SaisirMat
+    Vigile --> Pointer
+    Vigile --> ConsulterPresJour
     
-    ' Cas d'utilisation Administrateur
-    usecase "Consulter toutes absences" as UC_ConsulterToutesAbsences
-    usecase "Consulter tous retards" as UC_ConsulterTousRetards
-    usecase "Valider justification" as UC_ValiderJustif
-    usecase "Rejeter justification" as UC_RejeterJustif
-    usecase "Gérer inscriptions" as UC_GererInscriptions
-    usecase "Gérer classes" as UC_GererClasses
-    usecase "Gérer enseignants" as UC_GererEnseignants
-    usecase "Gérer cours" as UC_GererCours
-    usecase "Gérer séances" as UC_GererSeances
-    usecase "Gérer planning global" as UC_GererPlanning
-    usecase "Générer rapports" as UC_GenererRapports
-}
-
-' Relations Vigile
-vigile --> UC_Login
-vigile --> UC_ScanQR
-vigile --> UC_SaisirMatricule
-vigile --> UC_Pointer
-vigile --> UC_ConsulterPresencesJour
-
-' Relations Étudiant
-etudiant --> UC_Login
-etudiant --> UC_ConsulterAbsences
-etudiant --> UC_ConsulterRetards
-etudiant --> UC_Justifier
-etudiant --> UC_ConsulterEDT
-
-' Relations Administrateur
-admin --> UC_Login
-admin --> UC_ConsulterToutesAbsences
-admin --> UC_ConsulterTousRetards
-admin --> UC_ValiderJustif
-admin --> UC_RejeterJustif
-admin --> UC_GererInscriptions
-admin --> UC_GererClasses
-admin --> UC_GererEnseignants
-admin --> UC_GererCours
-admin --> UC_GererSeances
-admin --> UC_GererPlanning
-admin --> UC_GenererRapports
-
-' Relations include/extend
-UC_Pointer ..> UC_ScanQR : <<include>>
-UC_Pointer ..> UC_SaisirMatricule : <<include>>
-UC_Justifier ..> UC_TelechargerJustif : <<extend>>
-
-@enduml
+    %% Relations Étudiant
+    Etudiant --> Login
+    Etudiant --> ConsulterAbs
+    Etudiant --> ConsulterRet
+    Etudiant --> Justifier
+    Etudiant --> ConsulterEDT
+    
+    %% Relations Administrateur
+    Admin --> Login
+    Admin --> ConsulterToutesAbs
+    Admin --> ConsulterTousRet
+    Admin --> ValiderJust
+    Admin --> RejeterJust
+    Admin --> GererInsc
+    Admin --> GererClasses
+    Admin --> GererEns
+    Admin --> GererCours
+    Admin --> GererSeances
+    Admin --> GererPlanning
+    Admin --> GenererRapports
+    
+    %% Relations include/extend
+    Pointer -.include.-> ScanQR
+    Pointer -.include.-> SaisirMat
+    Justifier -.extend.-> TelechargerJust
+    
+    %% Styles
+    classDef actorStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef usecaseStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class Vigile,Etudiant,Admin actorStyle
+    class Login,ScanQR,SaisirMat,Pointer,ConsulterPresJour,ConsulterAbs,ConsulterRet,Justifier,ConsulterEDT,TelechargerJust,ConsulterToutesAbs,ConsulterTousRet,ValiderJust,RejeterJust,GererInsc,GererClasses,GererEns,GererCours,GererSeances,GererPlanning,GenererRapports usecaseStyle
 ```
 
 ## 2. Diagramme de Classes Détaillé
 
 ```mermaid
-@startuml
-!define ENTITY class
-
-' Énumérations
-enum TypeUtilisateur {
-    ETUDIANT
-    VIGILE
-    ADMIN
-}
-
-enum StatutPresence {
-    PRESENT
-    ABSENT
-    RETARD
-}
-
-enum StatutJustification {
-    EN_ATTENTE
-    VALIDEE
-    REJETEE
-}
-
-enum TypeJustification {
-    MEDICAL
-    FAMILIAL
-    AUTRE
-}
-
-' Classe abstraite Utilisateur
-abstract class Utilisateur {
-    - id: String
-    - email: String
-    - password: String
-    - nom: String
-    - prenom: String
-    - telephone: String
-    - typeUtilisateur: TypeUtilisateur
-    - dateCreation: Date
-    - actif: Boolean
-    + seConnecter()
-    + seDeconnecter()
-    + modifierProfil()
-}
-
-' Classes concrètes
-class Etudiant extends Utilisateur {
-    - matricule: String
-    - dateNaissance: Date
-    - adresse: String
-    - photo: String
-    - qrCode: String
-    + consulterAbsences(): List<Presence>
-    + consulterRetards(): List<Presence>
-    + justifierAbsence(justification: Justification)
-    + consulterEmploiDuTemps(): List<Seance>
-    + genererQRCode()
-}
-
-class Vigile extends Utilisateur {
-    - numeroAgent: String
-    - poste: String
-    + pointerEtudiant(etudiant: Etudiant, seance: Seance)
-    + scannerQRCode(qrCode: String): Etudiant
-    + saisirMatricule(matricule: String): Etudiant
-    + consulterPresencesJour(): List<Presence>
-}
-
-class Admin extends Utilisateur {
-    - role: String
-    + validerJustification(justification: Justification)
-    + rejeterJustification(justification: Justification)
-    + genererRapport(type: String, periode: Periode): Rapport
-    + gererInscriptions()
-    + gererPlanning()
-}
-
-class Classe {
-    - id: String
-    - nom: String
-    - niveau: String
-    - filiere: String
-    - anneeAcademique: String
-    - effectif: Integer
-    + ajouterEtudiant(etudiant: Etudiant)
-    + retirerEtudiant(etudiant: Etudiant)
-    + obtenirListeEtudiants(): List<Etudiant>
-}
-
-class Enseignant {
-    - id: String
-    - nom: String
-    - prenom: String
-    - email: String
-    - telephone: String
-    - specialite: String
-    - grade: String
-    + obtenirCours(): List<Cours>
-    + obtenirSeances(): List<Seance>
-}
-
-class Cours {
-    - id: String
-    - code: String
-    - nom: String
-    - credit: Integer
-    - volumeHoraire: Integer
-    - description: String
-    + ajouterSeance(seance: Seance)
-    + obtenirSeances(): List<Seance>
-}
-
-class Seance {
-    - id: String
-    - date: Date
-    - heureDebut: Time
-    - heureFin: Time
-    - salle: String
-    - type: String
-    + marquerPresence(presence: Presence)
-    + obtenirPresences(): List<Presence>
-    + calculerTauxPresence(): Double
-}
-
-class Presence {
-    - id: String
-    - heurePointage: DateTime
-    - statut: StatutPresence
-    - commentaire: String
-    + estEnRetard(): Boolean
-    + calculerDureeRetard(): Integer
-}
-
-class Justification {
-    - id: String
-    - motif: String
-    - typeJustification: TypeJustification
-    - dateDepot: Date
-    - dateTraitement: Date
-    - statut: StatutJustification
-    - documentJustificatif: String
-    - commentaireAdmin: String
-    + valider()
-    + rejeter()
-    + telechargerDocument(): File
-}
-
-class Rapport {
-    - id: String
-    - type: String
-    - dateGeneration: Date
-    - periode: String
-    - contenu: String
-    + generer()
-    + exporter(format: String): File
-}
-
-' Relations
-Etudiant "1" -- "*" Presence : participe
-Etudiant "*" -- "1" Classe : appartient
-Etudiant "1" -- "*" Justification : soumet
-
-Vigile "1" -- "*" Presence : enregistre
-
-Admin "1" -- "*" Justification : traite
-Admin "1" -- "*" Rapport : génère
-
-Classe "*" -- "*" Cours : suit
-Classe "1" -- "*" Seance : assiste
-
-Enseignant "1" -- "*" Cours : enseigne
-Enseignant "1" -- "*" Seance : anime
-
-Cours "1" -- "*" Seance : comprend
-
-Seance "1" -- "*" Presence : contient
-
-Presence "0..1" -- "0..1" Justification : justifie
-
-@enduml
+classDiagram
+    %% Classe abstraite Utilisateur
+    class Utilisateur {
+        <<abstract>>
+        -String id
+        -String email
+        -String password
+        -String nom
+        -String prenom
+        -String telephone
+        -TypeUtilisateur typeUtilisateur
+        -Date dateCreation
+        -Boolean actif
+        +seConnecter()
+        +seDeconnecter()
+        +modifierProfil()
+    }
+    
+    %% Classes concrètes héritant d'Utilisateur
+    class Etudiant {
+        -String matricule
+        -Date dateNaissance
+        -String adresse
+        -String photo
+        -String qrCode
+        +consulterAbsences() List~Presence~
+        +consulterRetards() List~Presence~
+        +justifierAbsence(Justification justification)
+        +consulterEmploiDuTemps() List~Seance~
+        +genererQRCode()
+    }
+    
+    class Vigile {
+        -String numeroAgent
+        -String poste
+        +pointerEtudiant(Etudiant etudiant, Seance seance)
+        +scannerQRCode(String qrCode) Etudiant
+        +saisirMatricule(String matricule) Etudiant
+        +consulterPresencesJour() List~Presence~
+    }
+    
+    class Admin {
+        -String role
+        +validerJustification(Justification justification)
+        +rejeterJustification(Justification justification)
+        +genererRapport(String type, Periode periode) Rapport
+        +gererInscriptions()
+        +gererPlanning()
+    }
+    
+    %% Autres classes du domaine
+    class Classe {
+        -String id
+        -String nom
+        -String niveau
+        -String filiere
+        -String anneeAcademique
+        -Integer effectif
+        +ajouterEtudiant(Etudiant etudiant)
+        +retirerEtudiant(Etudiant etudiant)
+        +obtenirListeEtudiants() List~Etudiant~
+    }
+    
+    class Enseignant {
+        -String id
+        -String nom
+        -String prenom
+        -String email
+        -String telephone
+        -String specialite
+        -String grade
+        +obtenirCours() List~Cours~
+        +obtenirSeances() List~Seance~
+    }
+    
+    class Cours {
+        -String id
+        -String code
+        -String nom
+        -Integer credit
+        -Integer volumeHoraire
+        -String description
+        +ajouterSeance(Seance seance)
+        +obtenirSeances() List~Seance~
+    }
+    
+    class Seance {
+        -String id
+        -Date date
+        -Time heureDebut
+        -Time heureFin
+        -String salle
+        -String type
+        +marquerPresence(Presence presence)
+        +obtenirPresences() List~Presence~
+        +calculerTauxPresence() Double
+    }
+    
+    class Presence {
+        -String id
+        -DateTime heurePointage
+        -StatutPresence statut
+        -String commentaire
+        +estEnRetard() Boolean
+        +calculerDureeRetard() Integer
+    }
+    
+    class Justification {
+        -String id
+        -String motif
+        -TypeJustification typeJustification
+        -Date dateDepot
+        -Date dateTraitement
+        -StatutJustification statut
+        -String documentJustificatif
+        -String commentaireAdmin
+        +valider()
+        +rejeter()
+        +telechargerDocument() File
+    }
+    
+    class Rapport {
+        -String id
+        -String type
+        -Date dateGeneration
+        -String periode
+        -String contenu
+        +generer()
+        +exporter(String format) File
+    }
+    
+    %% Énumérations
+    class TypeUtilisateur {
+        <<enumeration>>
+        ETUDIANT
+        VIGILE
+        ADMIN
+    }
+    
+    class StatutPresence {
+        <<enumeration>>
+        PRESENT
+        ABSENT
+        RETARD
+    }
+    
+    class StatutJustification {
+        <<enumeration>>
+        EN_ATTENTE
+        VALIDEE
+        REJETEE
+    }
+    
+    class TypeJustification {
+        <<enumeration>>
+        MEDICAL
+        FAMILIAL
+        AUTRE
+    }
+    
+    %% Relations d'héritage
+    Utilisateur <|-- Etudiant
+    Utilisateur <|-- Vigile
+    Utilisateur <|-- Admin
+    
+    %% Relations d'association
+    Etudiant "1" -- "*" Presence : participe
+    Etudiant "*" -- "1" Classe : appartient
+    Etudiant "1" -- "*" Justification : soumet
+    
+    Vigile "1" -- "*" Presence : enregistre
+    
+    Admin "1" -- "*" Justification : traite
+    Admin "1" -- "*" Rapport : génère
+    
+    Classe "*" -- "*" Cours : suit
+    Classe "1" -- "*" Seance : assiste
+    
+    Enseignant "1" -- "*" Cours : enseigne
+    Enseignant "1" -- "*" Seance : anime
+    
+    Cours "1" -- "*" Seance : comprend
+    
+    Seance "1" -- "*" Presence : contient
+    
+    Presence "0..1" -- "0..1" Justification : justifie
 ```
 
 ## 3. Diagramme de Séquence - Processus de Pointage
 
 ```mermaid
-@startuml
-actor Vigile
-participant "App Mobile\nVigile" as AppVigile
-participant "API Gateway" as API
-participant "Service\nAuthentification" as AuthService
-participant "Service\nPresence" as PresenceService
-participant "Service\nEtudiant" as EtudiantService
-database "MongoDB" as DB
+sequenceDiagram
+    participant V as Vigile
+    participant AV as App Mobile<br/>Vigile
+    participant API as API Gateway
+    participant AS as Service<br/>Authentification
+    participant PS as Service<br/>Presence
+    participant ES as Service<br/>Etudiant
+    participant DB as MongoDB
 
-== Connexion du Vigile ==
-Vigile -> AppVigile: Saisir identifiants
-AppVigile -> API: POST /auth/login
-API -> AuthService: authenticate(email, password)
-AuthService -> DB: findUserByEmail()
-DB --> AuthService: User data
-AuthService -> AuthService: validatePassword()
-AuthService -> AuthService: generateJWT()
-AuthService --> API: JWT token
-API --> AppVigile: { token, user }
-AppVigile -> AppVigile: Stocker token
+    Note over V,DB: Connexion du Vigile
+    V->>AV: Saisir identifiants
+    AV->>API: POST /auth/login
+    API->>AS: authenticate(email, password)
+    AS->>DB: findUserByEmail()
+    DB-->>AS: User data
+    AS->>AS: validatePassword()
+    AS->>AS: generateJWT()
+    AS-->>API: JWT token
+    API-->>AV: { token, user }
+    AV->>AV: Stocker token
 
-== Scanner/Saisir Étudiant ==
-alt Scanner QR Code
-    Vigile -> AppVigile: Scanner QR Code
-    AppVigile -> AppVigile: Décoder QR Code
-else Saisir Matricule
-    Vigile -> AppVigile: Saisir matricule
-end
+    Note over V,DB: Scanner/Saisir Étudiant
+    alt Scanner QR Code
+        V->>AV: Scanner QR Code
+        AV->>AV: Décoder QR Code
+    else Saisir Matricule
+        V->>AV: Saisir matricule
+    end
 
-AppVigile -> API: GET /etudiants/{matricule}
-API -> EtudiantService: findByMatricule()
-EtudiantService -> DB: query étudiant
-DB --> EtudiantService: Etudiant data
-EtudiantService --> API: Etudiant object
-API --> AppVigile: Etudiant info
+    AV->>API: GET /etudiants/{matricule}
+    API->>ES: findByMatricule()
+    ES->>DB: query étudiant
+    DB-->>ES: Etudiant data
+    ES-->>API: Etudiant object
+    API-->>AV: Etudiant info
 
-== Pointer Présence ==
-AppVigile -> AppVigile: Afficher info étudiant
-Vigile -> AppVigile: Confirmer pointage
-AppVigile -> API: POST /presences
-note right: { etudiantId, seanceId, heurePointage }
-API -> PresenceService: createPresence()
-PresenceService -> PresenceService: Calculer statut\n(PRESENT/RETARD)
-PresenceService -> DB: save presence
-DB --> PresenceService: Presence saved
-PresenceService --> API: Presence created
-API --> AppVigile: Confirmation
-AppVigile -> AppVigile: Afficher succès
-
-@enduml
+    Note over V,DB: Pointer Présence
+    AV->>AV: Afficher info étudiant
+    V->>AV: Confirmer pointage
+    AV->>API: POST /presences
+    Note right of API: { etudiantId, seanceId, heurePointage }
+    API->>PS: createPresence()
+    PS->>PS: Calculer statut<br/>(PRESENT/RETARD)
+    PS->>DB: save presence
+    DB-->>PS: Presence saved
+    PS-->>API: Presence created
+    API-->>AV: Confirmation
+    AV->>AV: Afficher succès
 ```
 
 ## 4. Diagramme de Séquence - Processus de Justification
 
 ```mermaid
-@startuml
-actor Etudiant
-participant "App Mobile\nÉtudiant" as AppEtudiant
-participant "API Gateway" as API
-participant "Service\nJustification" as JustifService
-participant "Service\nNotification" as NotifService
-database "MongoDB" as DB
-actor Admin
-participant "App Web\nAdmin" as AppAdmin
+sequenceDiagram
+    participant E as Étudiant
+    participant AE as App Mobile<br/>Étudiant
+    participant API as API Gateway
+    participant JS as Service<br/>Justification
+    participant NS as Service<br/>Notification
+    participant DB as MongoDB
+    participant A as Admin
+    participant AA as App Web<br/>Admin
 
-== Soumission de Justification ==
-Etudiant -> AppEtudiant: Sélectionner absence
-AppEtudiant -> API: GET /absences/{id}
-API --> AppEtudiant: Détails absence
+    Note over E,AA: Soumission de Justification
+    E->>AE: Sélectionner absence
+    AE->>API: GET /absences/{id}
+    API-->>AE: Détails absence
 
-Etudiant -> AppEtudiant: Remplir formulaire\njustification
-Etudiant -> AppEtudiant: Télécharger document
-AppEtudiant -> API: POST /justifications
-note right: { absenceId, motif, type, document }
+    E->>AE: Remplir formulaire<br/>justification
+    E->>AE: Télécharger document
+    AE->>API: POST /justifications
+    Note right of API: { absenceId, motif, type, document }
 
-API -> JustifService: createJustification()
-JustifService -> JustifService: Valider données
-JustifService -> DB: save justification
-DB --> JustifService: Justification saved
-JustifService -> NotifService: notifyAdmin()
-NotifService -> NotifService: Envoyer notification
-JustifService --> API: Justification created
-API --> AppEtudiant: Confirmation
+    API->>JS: createJustification()
+    JS->>JS: Valider données
+    JS->>DB: save justification
+    DB-->>JS: Justification saved
+    JS->>NS: notifyAdmin()
+    NS->>NS: Envoyer notification
+    JS-->>API: Justification created
+    API-->>AE: Confirmation
 
-== Validation par Admin ==
-Admin -> AppAdmin: Consulter justifications
-AppAdmin -> API: GET /justifications/pending
-API -> JustifService: getPendingJustifications()
-JustifService -> DB: query justifications
-DB --> JustifService: List<Justification>
-JustifService --> API: Justifications list
-API --> AppAdmin: Afficher liste
+    Note over A,AA: Validation par Admin
+    A->>AA: Consulter justifications
+    AA->>API: GET /justifications/pending
+    API->>JS: getPendingJustifications()
+    JS->>DB: query justifications
+    DB-->>JS: List<Justification>
+    JS-->>API: Justifications list
+    API-->>AA: Afficher liste
 
-Admin -> AppAdmin: Sélectionner justification
-AppAdmin -> API: GET /justifications/{id}
-API --> AppAdmin: Détails + document
+    A->>AA: Sélectionner justification
+    AA->>API: GET /justifications/{id}
+    API-->>AA: Détails + document
 
-Admin -> AppAdmin: Valider/Rejeter
-AppAdmin -> API: PUT /justifications/{id}/status
-note right: { statut: VALIDEE/REJETEE, commentaire }
+    A->>AA: Valider/Rejeter
+    AA->>API: PUT /justifications/{id}/status
+    Note right of API: { statut: VALIDEE/REJETEE, commentaire }
 
-API -> JustifService: updateStatus()
-JustifService -> DB: update justification
-JustifService -> NotifService: notifyStudent()
-NotifService -> NotifService: Envoyer notification
-JustifService --> API: Status updated
-API --> AppAdmin: Confirmation
-
-@enduml
+    API->>JS: updateStatus()
+    JS->>DB: update justification
+    JS->>NS: notifyStudent()
+    NS->>NS: Envoyer notification
+    JS-->>API: Status updated
+    API-->>AA: Confirmation
 ```
 
 ## 5. Diagramme d'Activités - Processus Global de Gestion des Absences
