@@ -2,57 +2,39 @@
 
 ```mermaid
 classDiagram
-    %% Classe abstraite Utilisateur
-    class Utilisateur {
-        <<abstract>>
+    %% Classe User unique avec rôle
+    class User {
         -String id
         -String email
         -String password
         -String nom
         -String prenom
         -String telephone
-        -TypeUtilisateur typeUtilisateur
+        -TypeUtilisateur role
         -DateTime dateCreation
         -Boolean actif
+        -String matricule [nullable]
+        -Date dateNaissance [nullable]
+        -String adresse [nullable]
+        -String photo [nullable]
+        -String qrCode [nullable]
+        -String numeroAgent [nullable]
+        -String poste [nullable]
+        -String roleAdmin [nullable]
         +seConnecter() void
         +seDeconnecter() void
         +modifierProfil() void
-    }
-    
-    %% Classes concrètes héritant d'Utilisateur
-    class Etudiant {
-        -String matricule
-        -Date dateNaissance
-        -String adresse
-        -String photo
-        -String qrCode
         +consulterAbsences() List~Presence~
         +consulterRetards() List~Presence~
         +justifierAbsence(justification: Justification) void
         +consulterEmploiDuTemps() List~Seance~
         +genererQRCode() String
-        +getStatistiques() StatistiqueAbsence
-    }
-    
-    class Vigile {
-        -String numeroAgent
-        -String poste
-        +pointerEtudiant(etudiant: Etudiant, seance: Seance) Presence
-        +scannerQRCode(qrCode: String) Etudiant
-        +saisirMatricule(matricule: String) Etudiant
+        +pointerEtudiant(etudiant: User, seance: Seance) Presence
+        +scannerQRCode(qrCode: String) User
         +consulterPresencesJour(date: Date) List~Presence~
-        +getSeanceActuelle() Seance
-    }
-    
-    class Admin {
-        -String role
         +validerJustification(justification: Justification) void
         +rejeterJustification(justification: Justification, motif: String) void
         +genererRapport(type: String, periode: Periode) Rapport
-        +gererInscriptions() void
-        +gererPlanning() void
-        +consulterStatistiquesGlobales() Statistiques
-        +exporterDonnees(format: String) File
     }
     
     %% Classe Classe (pour les groupes d'étudiants)
@@ -63,9 +45,9 @@ classDiagram
         -String filiere
         -String anneeAcademique
         -Integer effectif
-        +ajouterEtudiant(etudiant: Etudiant) void
-        +retirerEtudiant(etudiant: Etudiant) void
-        +obtenirListeEtudiants() List~Etudiant~
+        +ajouterEtudiant(etudiant: User) void
+        +retirerEtudiant(etudiant: User) void
+        +obtenirListeEtudiants() List~User~
         +calculerTauxPresenceGlobal() Double
     }
     
@@ -108,7 +90,7 @@ classDiagram
         +obtenirPresences() List~Presence~
         +calculerTauxPresence() Double
         +estTerminee() Boolean
-        +getEtudiantsAbsents() List~Etudiant~
+        +getEtudiantsAbsents() List~User~
     }
     
     %% Classe Presence
@@ -200,20 +182,11 @@ classDiagram
         EXAMEN
     }
     
-    %% Relations d'héritage
-    Utilisateur <|-- Etudiant : hérite
-    Utilisateur <|-- Vigile : hérite
-    Utilisateur <|-- Admin : hérite
-    
     %% Relations d'association et de composition
-    Etudiant "1" --o "*" Presence : participe à
-    Etudiant "*" --* "1" Classe : appartient à
-    Etudiant "1" --o "*" Justification : soumet
-    
-    Vigile "1" --o "*" Presence : enregistre
-    
-    Admin "1" --o "*" Justification : traite
-    Admin "1" --o "*" Rapport : génère
+    User "1" --o "*" Presence : participe/enregistre
+    User "*" --* "1" Classe : appartient à [si role=ETUDIANT]
+    User "1" --o "*" Justification : soumet/traite
+    User "1" --o "*" Rapport : génère [si role=ADMIN]
     
     Classe "*" <--> "*" Cours : suit
     Classe "1" --o "*" Seance : assiste à
@@ -228,49 +201,49 @@ classDiagram
     Presence "1" -- "0..1" Justification : peut avoir
     
     %% Relations avec les énumérations
-    Utilisateur ..> TypeUtilisateur : utilise
+    User ..> TypeUtilisateur : utilise
     Presence ..> StatutPresence : utilise
     Justification ..> StatutJustification : utilise
     Justification ..> TypeJustification : utilise
     Seance ..> TypeSeance : utilise
     
     %% Dépendances
-    Etudiant ..> StatistiqueAbsence : crée
-    Admin ..> Classe : gère
-    Admin ..> Enseignant : gère
-    Admin ..> Cours : gère
-    Admin ..> Seance : gère
+    User ..> StatistiqueAbsence : crée [si role=ETUDIANT]
+    User ..> Classe : gère [si role=ADMIN]
+    User ..> Enseignant : gère [si role=ADMIN]
+    User ..> Cours : gère [si role=ADMIN]
+    User ..> Seance : gère [si role=ADMIN]
     
     %% Notes et contraintes
-    note for Etudiant "- Le matricule est unique\n- Le QR code est généré automatiquement\n- Un étudiant appartient à une seule classe"
+    note for User "Champs spécifiques par rôle:\n- ETUDIANT: matricule, dateNaissance, adresse, photo, qrCode\n- VIGILE: numeroAgent, poste\n- ADMIN: roleAdmin\n\nTous les champs spécifiques sont nullable"
     
-    note for Presence "- Une présence est unique par étudiant et séance\n- Le statut est calculé automatiquement\n- PRESENT si pointage <= heureDebut + 15min\n- RETARD si pointage > heureDebut + 15min"
+    note for Presence "- Une présence est unique par user(étudiant) et séance\n- Le statut est calculé automatiquement\n- PRESENT si pointage <= heureDebut + 15min\n- RETARD si pointage > heureDebut + 15min\n- Créée par un User avec role=VIGILE"
     
-    note for Justification "- Une justification par absence\n- Document obligatoire pour type MEDICAL\n- Validation par admin uniquement"
+    note for Justification "- Une justification par absence\n- Document obligatoire pour type MEDICAL\n- Soumise par User avec role=ETUDIANT\n- Validée par User avec role=ADMIN"
 ```
 
-## Légende des Relations
+## Changements Effectués
 
-- **`<|--`** : Héritage (extends)
-- **`*--`** : Composition (l'objet possédé ne peut exister sans le possesseur)
-- **`--o`** : Agrégation (l'objet possédé peut exister indépendamment)
-- **`--`** : Association simple
-- **`..>`** : Dépendance (uses)
-- **`<-->`** : Association bidirectionnelle
+### 1. **Entité User Unique**
+- Plus d'héritage
+- Un seul type `User` avec un attribut `role` (TypeUtilisateur)
+- Tous les champs spécifiques sont **nullable** :
+  - **Pour ETUDIANT** : matricule, dateNaissance, adresse, photo, qrCode
+  - **Pour VIGILE** : numeroAgent, poste  
+  - **Pour ADMIN** : roleAdmin
 
-## Cardinalités
+### 2. **Gestion par Rôle**
+- Les méthodes sont disponibles sur User mais leur utilisation dépend du rôle
+- Les relations conditionnelles sont annotées (ex: "si role=ETUDIANT")
 
-- **`1`** : Un et un seul
-- **`*`** : Zéro ou plusieurs
-- **`0..1`** : Zéro ou un
-- **`1..*`** : Un ou plusieurs
+### 3. **Avantages de cette Approche**
+- Plus simple pour la base de données (une seule collection/table)
+- Facilite la gestion des permissions
+- Évite la complexité de l'héritage en MongoDB
+- Permet facilement de changer de rôle si nécessaire
 
-## Contraintes Métier Respectées
-
-1. **Authentification** : Classe abstraite Utilisateur avec 3 types concrets
-2. **Unicité** : Matricule étudiant et numéro agent vigile uniques
-3. **Pointage** : Un seul pointage par étudiant et par séance
-4. **Statut automatique** : PRESENT/RETARD calculé selon l'heure
-5. **Justification** : Une seule par absence, validation par admin
-6. **Hiérarchie** : Étudiant → Classe → Cours → Séances
-7. **Traçabilité** : Dates de création et modification sur toutes les entités
+### 4. **Contraintes Maintenues**
+- Unicité du matricule (pour les étudiants)
+- Unicité du numeroAgent (pour les vigiles)
+- Un étudiant appartient à une seule classe
+- Les autres contraintes métier restent identiques
